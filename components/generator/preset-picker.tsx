@@ -33,7 +33,7 @@ function PresetThumbnail({ params, assets }: { params: OgParams; assets: OgAsset
 export function PresetPicker({ value, style, assets, onChange }: PresetPickerProps) {
   return (
     <fieldset className="flex flex-col gap-3">
-      <legend className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Preset</legend>
+      <legend className="sr-only">Preset</legend>
       <div className="grid grid-cols-2 gap-3">
         {PRESETS.map((preset) => {
           const selected = preset.id === value

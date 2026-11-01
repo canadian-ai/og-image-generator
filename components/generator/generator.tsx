@@ -1,14 +1,16 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, type FocusEvent, type SyntheticEvent } from "react"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { useObjectUrl, useOgRender } from "@/hooks/use-og-render"
 import { EMPTY_ASSETS, type OgAssets } from "@/lib/og/assets"
-import { presetSampleParams } from "@/lib/og/presets"
+import { getPreset, presetSampleParams } from "@/lib/og/presets"
+import { isFocusTarget, type FocusTarget } from "@/lib/og/regions"
 import { ogParamsSchema, type OgParams, type PresetId } from "@/lib/og/schema"
 import { CardFields } from "./card-fields"
 import { OgPreview } from "./og-preview"
 import { PresetPicker } from "./preset-picker"
+import { Section } from "./section"
 import { StyleFields } from "./style-fields"
 import { PublishPanel } from "@/components/publish/publish-panel"
 
@@ -48,15 +50,32 @@ export function Generator() {
       logo: current.logo,
     }))
 
+  const [focus, setFocus] = useState<FocusTarget | null>(null)
+  const fieldOf = (element: EventTarget | null) =>
+    element instanceof Element ? element.closest<HTMLElement>("[data-og-field]")?.dataset.ogField : undefined
+  const trackFocus = (event: SyntheticEvent) => {
+    const field = fieldOf(event.target)
+    if (isFocusTarget(field)) setFocus(field)
+  }
+  const releaseFocus = (event: FocusEvent) => {
+    if (!fieldOf(event.relatedTarget)) setFocus(null)
+  }
+
   const style = { theme: draft.theme, headingFont: draft.headingFont, bodyFont: draft.bodyFont, logo: draft.logo }
 
   return (
     <div className="flex flex-col gap-10">
       <div className="grid gap-8 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
-        <div className="flex flex-col gap-8">
-          <PresetPicker value={draft.preset} style={style} assets={assets} onChange={selectPreset} />
-          <CardFields value={draft} errors={fieldErrors} onChange={update} onLoadSample={loadSample} />
-          <StyleFields value={draft} assets={assets} onChange={update} onAssetsChange={setAssets} />
+        <div className="flex flex-col gap-6" onFocus={trackFocus} onClick={trackFocus} onBlur={releaseFocus}>
+          <Section title="Preset" summary={getPreset(draft.preset).name}>
+            <PresetPicker value={draft.preset} style={style} assets={assets} onChange={selectPreset} />
+          </Section>
+          <Section title="Content" summary={draft.title}>
+            <CardFields value={draft} errors={fieldErrors} onChange={update} onLoadSample={loadSample} />
+          </Section>
+          <Section title="Style" summary={`${draft.headingFont} · ${draft.bodyFont}`}>
+            <StyleFields value={draft} assets={assets} onChange={update} onAssetsChange={setAssets} />
+          </Section>
         </div>
         <div className="lg:sticky lg:top-6 lg:self-start">
           <OgPreview
@@ -66,6 +85,7 @@ export function Generator() {
             isCurrent={preview.isCurrent}
             error={preview.error?.message}
             isStale={!validation.success}
+            focus={focus}
           />
         </div>
       </div>

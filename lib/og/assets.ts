@@ -13,10 +13,14 @@ export interface UploadedFont {
   data: Uint8Array
 }
 
+export type LogoType = (typeof LOGO_TYPES)[number]
+
 export interface UploadedLogo {
   fileName: string
-  type: (typeof LOGO_TYPES)[number]
+  type: LogoType
   data: Uint8Array
+  /** Set when the logo was fetched from a URL instead of a local file. */
+  sourceUrl?: string
 }
 
 export interface OgAssets {
@@ -45,6 +49,18 @@ export function validateFontFile(file: { name: string; size: number }): string |
 export function validateLogoFile(file: { type: string; size: number }): string | null {
   if (!(LOGO_TYPES as readonly string[]).includes(file.type)) return "Use an SVG, PNG, JPEG or WebP image."
   if (file.size > MAX_LOGO_BYTES) return "Logos must be 1 MB or smaller."
+  return null
+}
+
+/** Detects the real image type from bytes, so servers' content-types and file extensions can't lie. */
+export function sniffLogoType(bytes: Uint8Array): LogoType | null {
+  const startsWith = (signature: number[], offset = 0) =>
+    signature.every((byte, index) => bytes[offset + index] === byte)
+  if (startsWith([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) return "image/png"
+  if (startsWith([0xff, 0xd8, 0xff])) return "image/jpeg"
+  if (startsWith([0x52, 0x49, 0x46, 0x46]) && startsWith([0x57, 0x45, 0x42, 0x50], 8)) return "image/webp"
+  const head = new TextDecoder().decode(bytes.subarray(0, 2048)).toLowerCase()
+  if (/<svg[\s>]/.test(head) && !/<html[\s>]/.test(head)) return "image/svg+xml"
   return null
 }
 

@@ -1,8 +1,9 @@
 "use client"
 
-import { Upload, X } from "lucide-react"
-import { useId, useRef, useState, type ChangeEvent } from "react"
+import { Link2, Loader2, Upload, X } from "lucide-react"
+import { useId, useRef, useState, type ChangeEvent, type FormEvent } from "react"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import {
@@ -10,11 +11,13 @@ import {
   FONT_EXTENSIONS,
   LOGO_TYPES,
   looksLikeFont,
+  sniffLogoType,
   validateFontFile,
   validateLogoFile,
   type OgAssets,
   type UploadedLogo,
 } from "@/lib/og/assets"
+import { fetchLogoFromUrl } from "@/lib/og/logo-url"
 import { GOOGLE_FONTS, LOGO_MODES, type LogoMode, type OgParams } from "@/lib/og/schema"
 
 interface StyleFieldsProps {
@@ -31,12 +34,14 @@ const selectClass =
 
 function FontSelect({
   id,
+  field,
   label,
   value,
   uploaded,
   onChange,
 }: {
   id: string
+  field: "headingFont" | "bodyFont"
   label: string
   value: string
   uploaded: string[]
@@ -45,7 +50,13 @@ function FontSelect({
   return (
     <div className="flex flex-col gap-2">
       <Label htmlFor={id}>{label}</Label>
-      <select id={id} value={value} onChange={(event) => onChange(event.target.value)} className={selectClass}>
+      <select
+        id={id}
+        data-og-field={field}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className={selectClass}
+      >
         {uploaded.length > 0 ? (
           <optgroup label="Uploaded">
             {uploaded.map((name) => (
@@ -81,6 +92,8 @@ export function StyleFields({ value, assets, onChange, onAssetsChange }: StyleFi
   const logoInput = useRef<HTMLInputElement>(null)
   const [fontError, setFontError] = useState<string | null>(null)
   const [logoError, setLogoError] = useState<string | null>(null)
+  const [logoUrl, setLogoUrl] = useState("")
+  const [isLoadingUrl, setIsLoadingUrl] = useState(false)
   const uploadedNames = assets.fonts.map((font) => font.name)
 
   const addFonts = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -135,10 +148,32 @@ export function StyleFields({ value, assets, onChange, onAssetsChange }: StyleFi
       setLogoError(`${file.name} could not be read.`)
       return
     }
+    const type = sniffLogoType(data)
+    if (!type) {
+      setLogoError(`${file.name} is not a valid SVG, PNG, JPEG or WebP image.`)
+      return
+    }
     setLogoError(null)
-    const logo: UploadedLogo = { fileName: file.name, type: file.type as UploadedLogo["type"], data }
+    setLogoUrl("")
+    const logo: UploadedLogo = { fileName: file.name, type, data }
     onAssetsChange((current) => ({ ...current, logo }))
     onChange({ logo: "custom" })
+  }
+
+  const loadLogoUrl = async (event: FormEvent) => {
+    event.preventDefault()
+    if (isLoadingUrl) return
+    setIsLoadingUrl(true)
+    setLogoError(null)
+    try {
+      const logo = await fetchLogoFromUrl(logoUrl)
+      onAssetsChange((current) => ({ ...current, logo }))
+      onChange({ logo: "custom" })
+    } catch (error) {
+      setLogoError(error instanceof Error ? error.message : "That URL could not be loaded.")
+    } finally {
+      setIsLoadingUrl(false)
+    }
   }
 
   const chooseLogoMode = (mode: LogoMode) => {
@@ -151,11 +186,12 @@ export function StyleFields({ value, assets, onChange, onAssetsChange }: StyleFi
 
   return (
     <fieldset className="flex flex-col gap-5">
-      <legend className="mb-4 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Style</legend>
+      <legend className="sr-only">Style</legend>
 
       <div className="grid grid-cols-2 gap-3">
         <FontSelect
           id={`${baseId}-heading`}
+          field="headingFont"
           label="Heading font"
           value={value.headingFont}
           uploaded={uploadedNames}
@@ -163,6 +199,7 @@ export function StyleFields({ value, assets, onChange, onAssetsChange }: StyleFi
         />
         <FontSelect
           id={`${baseId}-body`}
+          field="bodyFont"
           label="Body font"
           value={value.bodyFont}
           uploaded={uploadedNames}
@@ -222,6 +259,7 @@ export function StyleFields({ value, assets, onChange, onAssetsChange }: StyleFi
               key={mode}
               type="button"
               role="radio"
+              data-og-field="logo"
               aria-checked={value.logo === mode}
               onClick={() => chooseLogoMode(mode)}
               className={cn(
@@ -242,9 +280,32 @@ export function StyleFields({ value, assets, onChange, onAssetsChange }: StyleFi
           aria-label="Upload logo image"
           tabIndex={-1}
         />
+        <form onSubmit={loadLogoUrl} className="flex items-center gap-2">
+          <Input
+            type="url"
+            inputMode="url"
+            value={logoUrl}
+            onChange={(event) => {
+              setLogoUrl(event.target.value)
+              if (logoError) setLogoError(null)
+            }}
+            data-og-field="logo"
+            placeholder="https://example.com/logo.svg"
+            aria-label="Logo image or SVG URL"
+            aria-invalid={Boolean(logoError)}
+            autoComplete="off"
+            spellCheck={false}
+          />
+          <Button type="submit" variant="outline" size="sm" disabled={isLoadingUrl || logoUrl.trim() === ""}>
+            {isLoadingUrl ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Link2 aria-hidden="true" />}
+            Use URL
+          </Button>
+        </form>
         {assets.logo ? (
           <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-            <span className="truncate">{assets.logo.fileName}</span>
+            <span className="truncate" title={assets.logo.sourceUrl ?? assets.logo.fileName}>
+              {assets.logo.sourceUrl ? `From URL: ${assets.logo.fileName}` : assets.logo.fileName}
+            </span>
             <button
               type="button"
               onClick={() => logoInput.current?.click()}
@@ -254,7 +315,10 @@ export function StyleFields({ value, assets, onChange, onAssetsChange }: StyleFi
             </button>
           </div>
         ) : (
-          <p className="text-xs leading-relaxed text-muted-foreground">SVG, PNG, JPEG or WebP, up to 1 MB. Square works best.</p>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            Upload or link an SVG, PNG, JPEG or WebP up to 1 MB. Square works best. URLs are fetched by your browser, so the host must allow
+            cross-origin requests.
+          </p>
         )}
         {logoError ? <p role="alert" className="text-xs text-destructive">{logoError}</p> : null}
       </div>

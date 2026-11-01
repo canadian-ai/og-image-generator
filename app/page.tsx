@@ -17,9 +17,6 @@ export default function Page() {
             <a className="hover:text-foreground" href="https://github.com/canadian-ai/favicon-generator">
               Favicon Generator
             </a>
-            <a className="hover:text-foreground" href="https://github.com/canadian-ai/brand-components">
-              Brand components
-            </a>
           </nav>
         </div>
       </header>

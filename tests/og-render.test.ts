@@ -45,6 +45,14 @@ describe("Takumi rendering", () => {
 
   it("fails clearly when a custom asset is missing", async () => {
     await expect(renderOgPng({ ...presetSampleParams("spotlight"), logo: "custom" })).rejects.toThrow(/Upload a logo/)
+  })
+
+  it("renders a title with one very long unbroken word at the standard size", async () => {
+    const title = "Generatorhttps://cdn.example.com/assets/an-extremely-long-unbroken-path-segment.svg"
+    for (const preset of PRESET_IDS) {
+      const png = await renderOgPng({ ...presetSampleParams(preset), title })
+      expect(readPngSize(png)).toEqual({ width: 1200, height: 630 })
+    }
     await expect(
       fontsForParams({ ...presetSampleParams("spotlight"), headingFont: "Gone Sans" }, { fonts: [], logo: null }),
     ).rejects.toThrow(/Gone Sans/)

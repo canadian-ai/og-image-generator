@@ -119,6 +119,7 @@ function Spotlight(params: OgParams) {
               lineHeight: 1.04,
               letterSpacing: "-0.02em",
               textWrap: "balance",
+              overflowWrap: "anywhere",
             }}
           >
             {title}
@@ -160,6 +161,7 @@ function Split(params: OgParams) {
               lineHeight: 1.06,
               letterSpacing: "-0.02em",
               textWrap: "balance",
+              overflowWrap: "anywhere",
             }}
           >
             {title}
@@ -214,6 +216,7 @@ function Statement(params: OgParams) {
           letterSpacing: "-0.025em",
           textAlign: "center",
           textWrap: "balance",
+          overflowWrap: "anywhere",
         }}
       >
         {title}
@@ -264,6 +267,7 @@ function Announcement(params: OgParams) {
               lineHeight: 1.05,
               letterSpacing: "-0.03em",
               textWrap: "balance",
+              overflowWrap: "anywhere",
             }}
           >
             {title}

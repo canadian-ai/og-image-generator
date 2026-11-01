@@ -28,8 +28,8 @@ export function CardFields({ value, errors, onChange, onLoadSample }: CardFields
 
   return (
     <fieldset className="flex flex-col gap-5">
-      <div className="mb-1 flex items-center justify-between">
-        <legend className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Content</legend>
+      <legend className="sr-only">Content</legend>
+      <div className="flex justify-end">
         <Button type="button" variant="ghost" size="xs" onClick={onLoadSample}>
           Load {preset.name} sample
         </Button>
@@ -42,6 +42,7 @@ export function CardFields({ value, errors, onChange, onLoadSample }: CardFields
         </div>
         <Input
           id="og-title"
+          data-og-field="title"
           value={value.title}
           onChange={(event) => onChange({ title: event.target.value })}
           aria-invalid={Boolean(errors.title)}
@@ -61,6 +62,7 @@ export function CardFields({ value, errors, onChange, onLoadSample }: CardFields
         </div>
         <Textarea
           id="og-description"
+          data-og-field="description"
           rows={3}
           value={value.description}
           onChange={(event) => onChange({ description: event.target.value })}
@@ -77,6 +79,7 @@ export function CardFields({ value, errors, onChange, onLoadSample }: CardFields
           <Label htmlFor="og-eyebrow">Eyebrow</Label>
           <Input
             id="og-eyebrow"
+            data-og-field="eyebrow"
             value={value.eyebrow}
             maxLength={LIMITS.eyebrow}
             onChange={(event) => onChange({ eyebrow: event.target.value })}
@@ -86,6 +89,7 @@ export function CardFields({ value, errors, onChange, onLoadSample }: CardFields
           <Label htmlFor="og-site">Site</Label>
           <Input
             id="og-site"
+            data-og-field="siteUrl"
             value={value.siteUrl}
             maxLength={LIMITS.siteUrl}
             onChange={(event) => onChange({ siteUrl: event.target.value })}
@@ -101,6 +105,7 @@ export function CardFields({ value, errors, onChange, onLoadSample }: CardFields
               key={theme}
               type="button"
               role="radio"
+              data-og-field="theme"
               aria-checked={value.theme === theme}
               onClick={() => onChange({ theme })}
               className={cn(

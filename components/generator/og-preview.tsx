@@ -1,9 +1,10 @@
 "use client"
 
 import { Download, Link2 } from "lucide-react"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { FOCUS_LABELS, focusInfo, type FocusInfo, type FocusTarget, type Rect } from "@/lib/og/regions"
 import { OG_HEIGHT, OG_WIDTH, type OgParams } from "@/lib/og/schema"
 
 type View = "canvas" | "unfurl"
@@ -15,6 +16,24 @@ interface OgPreviewProps {
   isCurrent: boolean
   error: string | undefined
   isStale: boolean
+  /** The input being edited, highlighted on the card. */
+  focus: FocusTarget | null
+}
+
+const HIGHLIGHT_PADDING = 10
+
+/** Converts a canvas-pixel rectangle into percentage CSS so it scales with the image. */
+function toBox(rect: Rect) {
+  const x = Math.max(0, rect.x - HIGHLIGHT_PADDING)
+  const y = Math.max(0, rect.y - HIGHLIGHT_PADDING)
+  const right = Math.min(OG_WIDTH, rect.x + rect.w + HIGHLIGHT_PADDING)
+  const bottom = Math.min(OG_HEIGHT, rect.y + rect.h + HIGHLIGHT_PADDING)
+  return {
+    left: `${(x / OG_WIDTH) * 100}%`,
+    top: `${(y / OG_HEIGHT) * 100}%`,
+    width: `${((right - x) / OG_WIDTH) * 100}%`,
+    height: `${((bottom - y) / OG_HEIGHT) * 100}%`,
+  }
 }
 
 function downloadName(title: string): string {
@@ -22,8 +41,9 @@ function downloadName(title: string): string {
   return `og-${slug || "image"}.png`
 }
 
-export function OgPreview({ params, imageUrl, isRendering, isCurrent, error, isStale }: OgPreviewProps) {
+export function OgPreview({ params, imageUrl, isRendering, isCurrent, error, isStale, focus }: OgPreviewProps) {
   const [view, setView] = useState<View>("canvas")
+  const highlight = useMemo(() => (focus ? focusInfo(params, focus) : { rects: [] as Rect[] }) as FocusInfo, [params, focus])
   const dimmed = isStale || !isCurrent
   const status = error
     ? `Render failed: ${error}`
@@ -96,6 +116,14 @@ export function OgPreview({ params, imageUrl, isRendering, isCurrent, error, isS
           {view === "canvas" ? (
             <span className="pointer-events-none absolute inset-0 rounded-md ring-1 ring-inset ring-foreground/10" />
           ) : null}
+          {highlight.rects.map((rect, index) => (
+            <span
+              key={`${focus}-${index}`}
+              aria-hidden="true"
+              style={toBox(rect)}
+              className="pointer-events-none absolute rounded-sm bg-brand/15 ring-2 ring-brand transition-all duration-150"
+            />
+          ))}
           <span
             role="status"
             className={cn(
@@ -120,6 +148,16 @@ export function OgPreview({ params, imageUrl, isRendering, isCurrent, error, isS
           </div>
         ) : null}
       </div>
+      <p className="min-h-5 text-xs text-muted-foreground" aria-live="polite">
+        {focus ? (
+          <>
+            <span className="font-medium text-foreground">Editing {FOCUS_LABELS[focus]}</span>
+            {highlight.note ? ` · ${highlight.note}` : ""}
+          </>
+        ) : (
+          "Focus a field to see where it lands on the card."
+        )}
+      </p>
     </section>
   )
 }

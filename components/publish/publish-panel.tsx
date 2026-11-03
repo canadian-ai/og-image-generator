@@ -28,22 +28,18 @@ const STEP_LABELS: Record<PrStep, string> = {
   "pull-request": "Opening pull request",
 }
 
-function Step({ index, title, done, children }: { index: number; title: string; done: boolean; children: ReactNode }) {
+function Stage({ title, done, children }: { title: string; done: boolean; children: ReactNode }) {
   return (
-    <li className="grid grid-cols-[2rem_minmax(0,1fr)] gap-4">
-      <span
-        className={cn(
-          "flex size-8 items-center justify-center rounded-full border font-mono text-xs",
-          done ? "border-brand bg-brand text-brand-foreground" : "text-muted-foreground",
-        )}
-        aria-hidden="true"
-      >
-        {done ? <Check className="size-4" /> : index}
-      </span>
-      <div className="flex min-w-0 flex-col gap-4 pb-8">
-        <h3 className="pt-1 text-sm font-semibold">{title}</h3>
-        {children}
-      </div>
+    <li className="flex min-w-0 flex-col gap-3 border-t pt-4 first:border-t-0 first:pt-0">
+      <h3 className="flex items-center gap-2 text-sm font-semibold">
+        <Check
+          aria-hidden="true"
+          className={cn("size-4 shrink-0", done ? "text-brand" : "text-muted-foreground/40")}
+        />
+        {title}
+        {done ? <span className="sr-only">(done)</span> : null}
+      </h3>
+      {children}
     </li>
   )
 }
@@ -53,9 +49,10 @@ interface PublishPanelProps {
   /** The in-browser render currently on screen; committed byte-for-byte. */
   render: OgRender | undefined
   isDraftValid: boolean
+  onOpened?: (pullRequest: { number: number; url: string }) => void
 }
 
-export function PublishPanel({ params, render, isDraftValid }: PublishPanelProps) {
+export function PublishPanel({ params, render, isDraftValid, onOpened }: PublishPanelProps) {
   const [token, setToken] = useState<string | null>(null)
   const client = useMemo(() => (token ? createGitHubClient(token) : null), [token])
 
@@ -123,6 +120,7 @@ export function PublishPanel({ params, render, isDraftValid }: PublishPanelProps
     try {
       const created = await executePrPlan(client, review.plan, review.base64, setStep)
       setResult(created)
+      onOpened?.(created)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not open the pull request.")
     } finally {
@@ -134,18 +132,13 @@ export function PublishPanel({ params, render, isDraftValid }: PublishPanelProps
   const canReview = Boolean(repo?.canPush) && !pathError && isDraftValid && Boolean(render) && !isPreparing
 
   return (
-    <section aria-labelledby="publish-heading" className="rounded-md border bg-card p-5 md:p-8">
-      <div className="mb-8 flex flex-col gap-1">
-        <h2 id="publish-heading" className="font-serif text-2xl font-bold">
-          Ship it as a pull request
-        </h2>
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          Nothing is pushed until you have reviewed the exact image, branch, and PR description below.
-        </p>
-      </div>
+    <div className="flex flex-col gap-5">
+      <p className="text-sm leading-relaxed text-muted-foreground">
+        Nothing is pushed until you have reviewed the exact image, branch, and PR description.
+      </p>
 
-      <ol className="flex flex-col">
-        <Step index={1} title="Connect GitHub" done={Boolean(user.data)}>
+      <ol className="flex flex-col gap-5">
+        <Stage title="Connect GitHub" done={Boolean(user.data)}>
           {user.data ? (
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -162,10 +155,10 @@ export function PublishPanel({ params, render, isDraftValid }: PublishPanelProps
           ) : (
             <TokenConnect onConnect={setToken} isConnecting={user.isLoading} error={user.error?.message} />
           )}
-        </Step>
+        </Stage>
 
         {user.data ? (
-          <Step index={2} title="Choose repository and destination" done={Boolean(repo) && !pathError}>
+          <Stage title="Choose repository and destination" done={Boolean(repo) && !pathError}>
             <RepoTarget
               repos={repos.data}
               isLoading={repos.isLoading}
@@ -183,11 +176,11 @@ export function PublishPanel({ params, render, isDraftValid }: PublishPanelProps
                 {isPreparing ? "Preparing review…" : reviewIsCurrent ? "Refresh review" : "Review changes"}
               </Button>
             </div>
-          </Step>
+          </Stage>
         ) : null}
 
         {review ? (
-          <Step index={3} title="Review and open the pull request" done={Boolean(result)}>
+          <Stage title="Review and open the pull request" done={Boolean(result)}>
             <ReviewCard plan={review.plan} imageUrl={review.imageUrl} byteLength={review.byteLength} />
             {!reviewIsCurrent ? (
               <p role="status" className="text-sm text-muted-foreground">
@@ -215,7 +208,7 @@ export function PublishPanel({ params, render, isDraftValid }: PublishPanelProps
                 {result ? "Pull request opened. Review and merge it on GitHub." : null}
               </span>
             </div>
-          </Step>
+          </Stage>
         ) : null}
       </ol>
 
@@ -224,6 +217,6 @@ export function PublishPanel({ params, render, isDraftValid }: PublishPanelProps
           {error}
         </p>
       ) : null}
-    </section>
+    </div>
   )
 }

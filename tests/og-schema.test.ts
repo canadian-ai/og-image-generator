@@ -16,6 +16,7 @@ describe("ogParamsSchema", () => {
     expect(ogParamsSchema.parse({ title: "Hello" })).toEqual({
       preset: "spotlight",
       theme: "dark",
+      customColors: { background: "#10231c", foreground: "#f1f7f4", accent: "#f5c542" },
       title: "Hello",
       description: "",
       eyebrow: "Canadian AI",

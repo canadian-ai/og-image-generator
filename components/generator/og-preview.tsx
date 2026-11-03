@@ -121,7 +121,10 @@ export function OgPreview({ params, imageUrl, isRendering, isCurrent, error, isS
               key={`${focus}-${index}`}
               aria-hidden="true"
               style={toBox(rect)}
-              className="pointer-events-none absolute rounded-sm bg-brand/15 ring-2 ring-brand transition-all duration-150"
+              className={cn(
+                "pointer-events-none absolute rounded-sm ring-2 ring-brand transition-all duration-150",
+                focus !== "theme" && "bg-brand/15",
+              )}
             />
           ))}
           <span

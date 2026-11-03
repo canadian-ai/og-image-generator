@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { customColorsSchema, DEFAULT_CUSTOM_COLORS, THEME_IDS, type ThemeId } from "./themes"
 
 export const OG_WIDTH = 1200
 export const OG_HEIGHT = 630
@@ -6,8 +7,7 @@ export const OG_HEIGHT = 630
 export const PRESET_IDS = ["spotlight", "split", "statement", "announcement"] as const
 export type PresetId = (typeof PRESET_IDS)[number]
 
-export const THEMES = ["dark", "light"] as const
-export type OgTheme = (typeof THEMES)[number]
+export type OgTheme = ThemeId
 
 export const LOGO_MODES = ["brand", "custom", "none"] as const
 export type LogoMode = (typeof LOGO_MODES)[number]
@@ -48,7 +48,8 @@ const fontName = z.string().trim().min(1, "Pick a font").max(LIMITS.fontName)
 
 export const ogParamsSchema = z.object({
   preset: z.enum(PRESET_IDS).default("spotlight"),
-  theme: z.enum(THEMES).default("dark"),
+  theme: z.enum(THEME_IDS).default("dark"),
+  customColors: customColorsSchema.default(DEFAULT_CUSTOM_COLORS),
   title: z.string().trim().min(1, "Title is required").max(LIMITS.title),
   description: z.string().trim().max(LIMITS.description).default(""),
   eyebrow: z.string().trim().max(LIMITS.eyebrow).default("Canadian AI"),

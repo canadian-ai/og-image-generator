@@ -1,6 +1,13 @@
 import { getPreset } from "@/lib/og/presets"
 import { OG_HEIGHT, OG_WIDTH, type OgParams } from "@/lib/og/schema"
+import { themeName } from "@/lib/og/themes"
 import type { GitHubClient, GitHubRepo } from "./client"
+
+function themeLabel(params: OgParams): string {
+  if (params.theme !== "custom") return themeName(params.theme)
+  const { background, foreground, accent } = params.customColors
+  return `Custom (background ${background}, text ${foreground}, accent ${accent})`
+}
 
 export const TARGET_PATHS = [
   {
@@ -103,7 +110,7 @@ export function buildPrPlan(input: {
     params.description ? `| Description | ${escapeTableCell(params.description)} |` : null,
     `| Eyebrow | ${escapeTableCell(params.eyebrow)} |`,
     `| Site | ${escapeTableCell(params.siteUrl)} |`,
-    `| Theme | ${params.theme} |`,
+    `| Theme | ${themeLabel(params)} |`,
     `| Fonts | ${escapeTableCell(params.headingFont)} / ${escapeTableCell(params.bodyFont)} |`,
     `| Logo | ${LOGO_LABELS[params.logo]} |`,
     "",

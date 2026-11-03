@@ -9,7 +9,7 @@ import type { OgParams, PresetId } from "@/lib/og/schema"
 interface PresetPickerProps {
   value: PresetId
   /** Current style (theme, fonts, logo) so thumbnails show what the user will get. */
-  style: Pick<OgParams, "theme" | "headingFont" | "bodyFont" | "logo">
+  style: Pick<OgParams, "theme" | "customColors" | "headingFont" | "bodyFont" | "logo">
   assets: OgAssets
   onChange: (preset: PresetId) => void
 }
@@ -33,7 +33,7 @@ function PresetThumbnail({ params, assets }: { params: OgParams; assets: OgAsset
 export function PresetPicker({ value, style, assets, onChange }: PresetPickerProps) {
   return (
     <fieldset className="flex flex-col gap-3">
-      <legend className="sr-only">Preset</legend>
+      <legend className="mb-3 text-sm font-medium">Layout</legend>
       <div className="grid grid-cols-2 gap-3">
         {PRESETS.map((preset) => {
           const selected = preset.id === value

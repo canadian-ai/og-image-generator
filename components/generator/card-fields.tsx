@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { getPreset } from "@/lib/og/presets"
-import { LIMITS, THEMES, type OgParams } from "@/lib/og/schema"
+import { LIMITS, type OgParams } from "@/lib/og/schema"
 
 interface CardFieldsProps {
   value: OgParams
@@ -94,28 +94,6 @@ export function CardFields({ value, errors, onChange, onLoadSample }: CardFields
             maxLength={LIMITS.siteUrl}
             onChange={(event) => onChange({ siteUrl: event.target.value })}
           />
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-2" role="radiogroup" aria-label="Theme">
-        <span className="text-sm font-medium">Theme</span>
-        <div className="grid grid-cols-2 gap-1 rounded-md border p-1">
-          {THEMES.map((theme) => (
-            <button
-              key={theme}
-              type="button"
-              role="radio"
-              data-og-field="theme"
-              aria-checked={value.theme === theme}
-              onClick={() => onChange({ theme })}
-              className={cn(
-                "rounded-sm px-3 py-1.5 text-sm capitalize text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50",
-                value.theme === theme && "bg-secondary text-foreground",
-              )}
-            >
-              {theme}
-            </button>
-          ))}
         </div>
       </div>
     </fieldset>

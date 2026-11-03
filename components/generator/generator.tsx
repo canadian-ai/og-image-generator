@@ -9,11 +9,13 @@ import { EMPTY_ASSETS, type OgAssets } from "@/lib/og/assets"
 import { getPreset, presetSampleParams } from "@/lib/og/presets"
 import { isFocusTarget, type FocusTarget } from "@/lib/og/regions"
 import { ogParamsSchema, type OgParams, type PresetId } from "@/lib/og/schema"
+import { themeName } from "@/lib/og/themes"
 import { CardFields } from "./card-fields"
 import { OgPreview } from "./og-preview"
 import { PresetPicker } from "./preset-picker"
 import { Section } from "./section"
 import { StyleFields } from "./style-fields"
+import { ThemePicker } from "./theme-picker"
 import { PublishPanel } from "@/components/publish/publish-panel"
 
 export function Generator() {
@@ -47,6 +49,7 @@ export function Generator() {
     setDraft((current) => ({
       ...presetSampleParams(current.preset),
       theme: current.theme,
+      customColors: current.customColors,
       headingFont: current.headingFont,
       bodyFont: current.bodyFont,
       logo: current.logo,
@@ -63,7 +66,13 @@ export function Generator() {
     if (!fieldOf(event.relatedTarget)) setFocus(null)
   }
 
-  const style = { theme: draft.theme, headingFont: draft.headingFont, bodyFont: draft.bodyFont, logo: draft.logo }
+  const style = {
+    theme: draft.theme,
+    customColors: draft.customColors,
+    headingFont: draft.headingFont,
+    bodyFont: draft.bodyFont,
+    logo: draft.logo,
+  }
 
   // 0 means every step is collapsed; `reached` marks steps the user has moved past.
   const [openStep, setOpenStep] = useState(1)
@@ -89,12 +98,18 @@ export function Generator() {
         <Section
           index={1}
           title="Preset"
-          summary={getPreset(draft.preset).name}
+          summary={`${getPreset(draft.preset).name} · ${themeName(draft.theme)}`}
           open={openStep === 1}
           onOpenChange={toggle(1)}
           done={reached > 1}
         >
           <PresetPicker value={draft.preset} style={style} assets={assets} onChange={selectPreset} />
+          <ThemePicker
+            theme={draft.theme}
+            customColors={draft.customColors}
+            error={fieldErrors.customColors}
+            onChange={update}
+          />
           {next(2, "Content")}
         </Section>
         <Section

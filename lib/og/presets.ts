@@ -1,6 +1,7 @@
 import { DEFAULT_FONTS, type OgParams, type PresetId } from "./schema"
+import { DEFAULT_CUSTOM_COLORS } from "./themes"
 
-type StyleFields = "preset" | "headingFont" | "bodyFont" | "logo"
+type StyleFields = "preset" | "headingFont" | "bodyFont" | "logo" | "customColors"
 
 export interface PresetDefinition {
   id: PresetId
@@ -72,5 +73,12 @@ export function getPreset(id: PresetId): PresetDefinition {
 }
 
 export function presetSampleParams(id: PresetId): OgParams {
-  return { preset: id, headingFont: DEFAULT_FONTS.heading, bodyFont: DEFAULT_FONTS.body, logo: "brand", ...getPreset(id).sample }
+  return {
+    preset: id,
+    headingFont: DEFAULT_FONTS.heading,
+    bodyFont: DEFAULT_FONTS.body,
+    logo: "brand",
+    customColors: DEFAULT_CUSTOM_COLORS,
+    ...getPreset(id).sample,
+  }
 }

@@ -1,37 +1,8 @@
 import type { CSSProperties } from "react"
 import { LOGO_IMAGE_SRC } from "./assets"
-import { CAI_MARK_PATH, MARK_FILL, SOCIAL_ACCENT } from "./brand"
-import { OG_HEIGHT, OG_WIDTH, titleFontSize, type LogoMode, type OgParams, type OgTheme } from "./schema"
-
-interface Palette {
-  background: string
-  foreground: string
-  muted: string
-  line: string
-  panel: string
-  mark: string
-}
-
-export function paletteFor(theme: OgTheme): Palette {
-  if (theme === "light") {
-    return {
-      background: SOCIAL_ACCENT.pearl,
-      foreground: SOCIAL_ACCENT.void,
-      muted: SOCIAL_ACCENT.slate,
-      line: SOCIAL_ACCENT.zinc,
-      panel: SOCIAL_ACCENT.void,
-      mark: MARK_FILL.black,
-    }
-  }
-  return {
-    background: SOCIAL_ACCENT.void,
-    foreground: SOCIAL_ACCENT.pearl,
-    muted: SOCIAL_ACCENT.mist,
-    line: SOCIAL_ACCENT.slate,
-    panel: SOCIAL_ACCENT.slate,
-    mark: MARK_FILL.white,
-  }
-}
+import { CAI_MARK_PATH } from "./brand"
+import { OG_HEIGHT, OG_WIDTH, titleFontSize, type LogoMode, type OgParams } from "./schema"
+import { paletteFor } from "./themes"
 
 interface LogoProps {
   mode: LogoMode
@@ -80,7 +51,7 @@ const eyebrowStyle = (color: string, fontFamily: string): CSSProperties => ({
 
 function Spotlight(params: OgParams) {
   const { title, description, eyebrow, siteUrl, theme, logo } = params
-  const p = paletteFor(theme)
+  const p = paletteFor(theme, params.customColors)
   const fonts = fontsFor(params)
   return (
     <div style={{ ...canvas, backgroundColor: p.background, fontFamily: fonts.body }}>
@@ -109,7 +80,7 @@ function Spotlight(params: OgParams) {
           <div style={eyebrowStyle(p.muted, fonts.body)}>{eyebrow}</div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 22, maxWidth: 880 }}>
-          <div style={{ width: 64, height: 6, backgroundColor: SOCIAL_ACCENT.emerald }} />
+          <div style={{ width: 64, height: 6, backgroundColor: p.accent }} />
           <div
             style={{
               color: p.foreground,
@@ -136,7 +107,7 @@ function Spotlight(params: OgParams) {
 
 function Split(params: OgParams) {
   const { title, description, eyebrow, siteUrl, theme, logo } = params
-  const p = paletteFor(theme)
+  const p = paletteFor(theme, params.customColors)
   const fonts = fontsFor(params)
   return (
     <div style={{ ...canvas, backgroundColor: p.background, fontFamily: fonts.body }}>
@@ -150,7 +121,7 @@ function Split(params: OgParams) {
           justifyContent: "space-between",
         }}
       >
-        <div style={eyebrowStyle(SOCIAL_ACCENT.emerald, fonts.body)}>{eyebrow}</div>
+        <div style={eyebrowStyle(p.accent, fonts.body)}>{eyebrow}</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
           <div
             style={{
@@ -172,7 +143,7 @@ function Split(params: OgParams) {
         </div>
         <div style={{ display: "flex", color: p.muted, fontSize: 22, fontWeight: 500 }}>{siteUrl}</div>
       </div>
-      <div style={{ width: 6, height: OG_HEIGHT, backgroundColor: SOCIAL_ACCENT.emerald }} />
+      <div style={{ width: 6, height: OG_HEIGHT, backgroundColor: p.accent }} />
       <div
         style={{
           width: OG_WIDTH - 740 - 6,
@@ -183,7 +154,7 @@ function Split(params: OgParams) {
           justifyContent: "center",
         }}
       >
-        <Logo mode={logo} size={280} fill={MARK_FILL.white} />
+        <Logo mode={logo} size={280} fill={p.panelMark} />
       </div>
     </div>
   )
@@ -191,7 +162,7 @@ function Split(params: OgParams) {
 
 function Statement(params: OgParams) {
   const { title, eyebrow, siteUrl, theme, logo } = params
-  const p = paletteFor(theme)
+  const p = paletteFor(theme, params.customColors)
   const fonts = fontsFor(params)
   return (
     <div
@@ -205,7 +176,7 @@ function Statement(params: OgParams) {
         padding: "64px 120px",
       }}
     >
-      <div style={eyebrowStyle(SOCIAL_ACCENT.emerald, fonts.body)}>{eyebrow}</div>
+      <div style={eyebrowStyle(p.accent, fonts.body)}>{eyebrow}</div>
       <div
         style={{
           color: p.foreground,
@@ -231,7 +202,7 @@ function Statement(params: OgParams) {
 
 function Announcement(params: OgParams) {
   const { title, description, eyebrow, siteUrl, theme, logo } = params
-  const p = paletteFor(theme)
+  const p = paletteFor(theme, params.customColors)
   const fonts = fontsFor(params)
   return (
     <div style={{ ...canvas, backgroundColor: p.background, fontFamily: fonts.body, flexDirection: "column" }}>
@@ -247,9 +218,9 @@ function Announcement(params: OgParams) {
         <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
           <div
             style={{
-              ...eyebrowStyle(SOCIAL_ACCENT.emerald, fonts.body),
+              ...eyebrowStyle(p.accent, fonts.body),
               fontSize: 20,
-              border: `2px solid ${SOCIAL_ACCENT.emerald}`,
+              border: `2px solid ${p.accent}`,
               padding: "8px 16px",
             }}
           >
@@ -281,7 +252,7 @@ function Announcement(params: OgParams) {
           <div>{siteUrl}</div>
         </div>
       </div>
-      <div style={{ width: OG_WIDTH, height: 12, backgroundColor: SOCIAL_ACCENT.emerald }} />
+      <div style={{ width: OG_WIDTH, height: 12, backgroundColor: p.accent }} />
     </div>
   )
 }

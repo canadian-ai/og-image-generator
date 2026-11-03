@@ -58,7 +58,7 @@ export const ogParamsSchema = z.object({
     .trim()
     .max(LIMITS.siteUrl)
     .transform((value) => value.replace(/^https?:\/\//i, "").replace(/\/+$/, ""))
-    .default("canadian.ai"),
+    .default("canadian-ai.ca"),
   headingFont: fontName.default(DEFAULT_FONTS.heading),
   bodyFont: fontName.default(DEFAULT_FONTS.body),
   logo: z.enum(LOGO_MODES).default("brand"),

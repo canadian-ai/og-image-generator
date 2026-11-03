@@ -22,7 +22,7 @@ export const PRESETS: readonly PresetDefinition[] = [
       eyebrow: "Canadian AI",
       title: "Favicon Generator",
       description: "Deterministic favicon management for Next.js, shipped as a pull request.",
-      siteUrl: "canadian.ai",
+      siteUrl: "canadian-ai.ca",
     },
   },
   {
@@ -35,7 +35,7 @@ export const PRESETS: readonly PresetDefinition[] = [
       eyebrow: "Product",
       title: "OG Image Generator",
       description: "Render on-brand 1200x630 cards with Takumi and open a PR in one pass.",
-      siteUrl: "canadian.ai/tools",
+      siteUrl: "canadian-ai.ca/tools",
     },
   },
   {
@@ -48,7 +48,7 @@ export const PRESETS: readonly PresetDefinition[] = [
       eyebrow: "Essay",
       title: "Sovereign compute is a policy choice",
       description: "",
-      siteUrl: "canadian.ai/writing",
+      siteUrl: "canadian-ai.ca/writing",
     },
   },
   {

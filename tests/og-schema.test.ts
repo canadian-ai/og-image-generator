@@ -20,7 +20,7 @@ describe("ogParamsSchema", () => {
       title: "Hello",
       description: "",
       eyebrow: "Canadian AI",
-      siteUrl: "canadian.ai",
+      siteUrl: "canadian-ai.ca",
       headingFont: "Playfair Display",
       bodyFont: "Inter",
       logo: "brand",
@@ -40,7 +40,7 @@ describe("ogParamsSchema", () => {
   })
 
   it("normalizes the site url", () => {
-    expect(ogParamsSchema.parse({ title: "x", siteUrl: "https://canadian.ai/tools/" }).siteUrl).toBe("canadian.ai/tools")
+    expect(ogParamsSchema.parse({ title: "x", siteUrl: "https://canadian-ai.ca/tools/" }).siteUrl).toBe("canadian-ai.ca/tools")
   })
 })
 

@@ -2,7 +2,7 @@ import { render } from "takumi-js"
 import { googleFonts } from "takumi-js/helpers"
 import { EMPTY_ASSETS, LOGO_IMAGE_SRC, type OgAssets } from "./assets"
 import { isGoogleFont, OG_HEIGHT, OG_WIDTH, type OgParams } from "./schema"
-import { OgTemplate } from "./templates"
+import { OgTemplate, type OgLayer } from "./templates"
 
 type RenderOptions = NonNullable<Parameters<typeof render>[1]>
 type FontLoaders = Awaited<NonNullable<RenderOptions["fonts"]>>
@@ -39,6 +39,8 @@ export interface RenderOgOptions {
   fonts?: RenderOptions["fonts"]
   /** WASM module or URL for the browser backend. Node uses the native backend. */
   module?: WebAssembly.Module | Promise<WebAssembly.Module> | URL | string
+  /** Renders one animatable part (or the static plate) on a transparent canvas for the video. */
+  layer?: OgLayer
 }
 
 /**
@@ -49,7 +51,7 @@ export async function renderOgPng(params: OgParams, options: RenderOgOptions = {
   const assets = options.assets ?? EMPTY_ASSETS
   if (params.logo === "custom" && !assets.logo) throw new Error("Upload a logo or switch back to the brand mark.")
 
-  const output = await render(<OgTemplate {...params} />, {
+  const output = await render(<OgTemplate {...params} layer={options.layer} />, {
     width: OG_WIDTH,
     height: OG_HEIGHT,
     format: "png",

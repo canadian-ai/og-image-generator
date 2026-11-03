@@ -6,11 +6,17 @@ import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { FOCUS_LABELS, focusInfo, type FocusInfo, type FocusTarget, type Rect } from "@/lib/og/regions"
 import { OG_HEIGHT, OG_WIDTH, type OgParams } from "@/lib/og/schema"
+import { useOgVideoScene } from "@/hooks/use-og-video-scene"
+import type { OgAssets } from "@/lib/og/assets"
+import { VideoPreview } from "./video-preview"
 
-type View = "canvas" | "unfurl"
+type View = "canvas" | "video" | "unfurl"
+
+const VIEW_LABELS: Record<View, string> = { canvas: "Canvas", video: "Video", unfurl: "Link unfurl" }
 
 interface OgPreviewProps {
   params: OgParams
+  assets: OgAssets
   imageUrl: string | undefined
   isRendering: boolean
   isCurrent: boolean
@@ -41,8 +47,9 @@ function downloadName(title: string): string {
   return `og-${slug || "image"}.png`
 }
 
-export function OgPreview({ params, imageUrl, isRendering, isCurrent, error, isStale, focus }: OgPreviewProps) {
+export function OgPreview({ params, assets, imageUrl, isRendering, isCurrent, error, isStale, focus }: OgPreviewProps) {
   const [view, setView] = useState<View>("canvas")
+  const video = useOgVideoScene(params, assets, view === "video")
   const highlight = useMemo(() => (focus ? focusInfo(params, focus) : { rects: [] as Rect[] }) as FocusInfo, [params, focus])
   const dimmed = isStale || !isCurrent
   const status = error
@@ -61,12 +68,12 @@ export function OgPreview({ params, imageUrl, isRendering, isCurrent, error, isS
             Preview
           </h2>
           <span className="font-mono text-xs text-muted-foreground">
-            {OG_WIDTH}×{OG_HEIGHT} PNG · rendered in your browser
+            {OG_WIDTH}×{OG_HEIGHT} {view === "video" ? "MP4 · 4s · 60fps" : "PNG"} · rendered in your browser
           </span>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex rounded-md border p-0.5" role="tablist" aria-label="Preview mode">
-            {(["canvas", "unfurl"] as const).map((mode) => (
+            {(["canvas", "video", "unfurl"] as const).map((mode) => (
               <button
                 key={mode}
                 type="button"
@@ -78,11 +85,11 @@ export function OgPreview({ params, imageUrl, isRendering, isCurrent, error, isS
                   view === mode && "bg-secondary text-foreground",
                 )}
               >
-                {mode === "unfurl" ? "Link unfurl" : "Canvas"}
+                {VIEW_LABELS[mode]}
               </button>
             ))}
           </div>
-          {imageUrl && isCurrent ? (
+          {view === "video" ? null : imageUrl && isCurrent ? (
             <a
               href={imageUrl}
               download={downloadName(params.title)}
@@ -101,7 +108,10 @@ export function OgPreview({ params, imageUrl, isRendering, isCurrent, error, isS
       </div>
 
       <div className={cn("relative overflow-hidden rounded-md border bg-card", view === "unfurl" && "mx-auto w-full max-w-md")}>
-        <div className="relative">
+        {view === "video" ? (
+          <VideoPreview scene={video.scene} isBuilding={video.isBuilding} error={video.error?.message} title={params.title} />
+        ) : null}
+        <div className={cn("relative", view === "video" && "hidden")}>
           {imageUrl ? (
             <img
               src={imageUrl || "/placeholder.svg"}

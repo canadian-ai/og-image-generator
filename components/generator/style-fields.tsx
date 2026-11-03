@@ -4,7 +4,6 @@ import { Link2, Loader2, Upload, X } from "lucide-react"
 import { useId, useRef, useState, type ChangeEvent, type FormEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import {
   familyNameFromFile,
@@ -18,7 +17,8 @@ import {
   type UploadedLogo,
 } from "@/lib/og/assets"
 import { fetchLogoFromUrl } from "@/lib/og/logo-url"
-import { GOOGLE_FONTS, LOGO_MODES, type LogoMode, type OgParams } from "@/lib/og/schema"
+import { LOGO_MODES, type LogoMode, type OgParams } from "@/lib/og/schema"
+import { FontPicker, useFontPreviews } from "./font-picker"
 
 interface StyleFieldsProps {
   value: OgParams
@@ -28,55 +28,6 @@ interface StyleFieldsProps {
 }
 
 const LOGO_LABELS: Record<LogoMode, string> = { brand: "Canadian AI", custom: "Upload", none: "None" }
-
-const selectClass =
-  "h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-
-function FontSelect({
-  id,
-  field,
-  label,
-  value,
-  uploaded,
-  onChange,
-}: {
-  id: string
-  field: "headingFont" | "bodyFont"
-  label: string
-  value: string
-  uploaded: string[]
-  onChange: (family: string) => void
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      <Label htmlFor={id}>{label}</Label>
-      <select
-        id={id}
-        data-og-field={field}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className={selectClass}
-      >
-        {uploaded.length > 0 ? (
-          <optgroup label="Uploaded">
-            {uploaded.map((name) => (
-              <option key={name} value={name} className="bg-popover text-popover-foreground">
-                {name}
-              </option>
-            ))}
-          </optgroup>
-        ) : null}
-        <optgroup label="Google Fonts">
-          {GOOGLE_FONTS.map((font) => (
-            <option key={font.family} value={font.family} className="bg-popover text-popover-foreground">
-              {font.family}
-            </option>
-          ))}
-        </optgroup>
-      </select>
-    </div>
-  )
-}
 
 async function readFileBytes(file: File): Promise<Uint8Array | null> {
   try {
@@ -95,6 +46,7 @@ export function StyleFields({ value, assets, onChange, onAssetsChange }: StyleFi
   const [logoUrl, setLogoUrl] = useState("")
   const [isLoadingUrl, setIsLoadingUrl] = useState(false)
   const uploadedNames = assets.fonts.map((font) => font.name)
+  useFontPreviews(assets.fonts)
 
   const addFonts = async (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? [])
@@ -188,21 +140,21 @@ export function StyleFields({ value, assets, onChange, onAssetsChange }: StyleFi
     <fieldset className="flex flex-col gap-5">
       <legend className="sr-only">Style</legend>
 
-      <div className="grid grid-cols-2 gap-3">
-        <FontSelect
-          id={`${baseId}-heading`}
+      <div className="flex flex-col gap-3">
+        <FontPicker
           field="headingFont"
           label="Heading font"
           value={value.headingFont}
           uploaded={uploadedNames}
+          sample={value.title}
           onChange={(headingFont) => onChange({ headingFont })}
         />
-        <FontSelect
-          id={`${baseId}-body`}
+        <FontPicker
           field="bodyFont"
           label="Body font"
           value={value.bodyFont}
           uploaded={uploadedNames}
+          sample={value.description || value.eyebrow}
           onChange={(bodyFont) => onChange({ bodyFont })}
         />
       </div>

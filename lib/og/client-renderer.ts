@@ -1,6 +1,7 @@
 import type { OgAssets } from "./assets"
 import type { RenderRequest, RenderResponse } from "./render.worker"
 import type { OgParams } from "./schema"
+import type { OgLayer } from "./templates"
 
 type Pending = { resolve: (png: Uint8Array) => void; reject: (error: Error) => void }
 
@@ -29,10 +30,10 @@ function getWorker(): Worker {
 }
 
 /** Renders a card with Takumi WASM in a Web Worker. Nothing leaves the browser. */
-export function renderInBrowser(params: OgParams, assets: OgAssets): Promise<Uint8Array> {
+export function renderInBrowser(params: OgParams, assets: OgAssets, layer?: OgLayer): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {
     const id = ++nextId
     pending.set(id, { resolve, reject })
-    getWorker().postMessage({ id, params, assets } satisfies RenderRequest)
+    getWorker().postMessage({ id, params, assets, layer } satisfies RenderRequest)
   })
 }

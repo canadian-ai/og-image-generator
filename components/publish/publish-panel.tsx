@@ -7,11 +7,14 @@ import { Button, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { bytesToBase64 } from "@/lib/encoding"
 import { createGitHubClient, type GitHubRepo } from "@/lib/github/client"
-import { buildPrPlan, executePrPlan, TARGET_PATHS, validateTargetPath, type PrPlan, type PrStep } from "@/lib/github/plan"
+import { buildPrPlan, executePrPlan, TARGET_PATHS, validateTargetPath, videoPathFor, type PrPlan, type PrStep } from "@/lib/github/plan"
+import type { OgAssets } from "@/lib/og/assets"
 import type { OgParams } from "@/lib/og/schema"
+import { canEncodeMp4, encodeMp4, MP4_MIME } from "@/lib/og/video/encode"
+import { buildVideoScene } from "@/lib/og/video/scene"
 import type { OgRender } from "@/hooks/use-og-render"
 import { RepoTarget } from "./repo-target"
-import { ReviewCard } from "./review-card"
+import { ReviewCard, type ReviewVideo } from "./review-card"
 import { TokenConnect } from "./token-connect"
 
 interface Review {
@@ -20,11 +23,12 @@ interface Review {
   imageUrl: string
   byteLength: number
   renderKey: string
+  video: (ReviewVideo & { base64: string }) | null
 }
 
 const STEP_LABELS: Record<PrStep, string> = {
   branch: "Creating branch",
-  commit: "Committing image",
+  commit: "Committing files",
   "pull-request": "Opening pull request",
 }
 
@@ -46,13 +50,14 @@ function Stage({ title, done, children }: { title: string; done: boolean; childr
 
 interface PublishPanelProps {
   params: OgParams
+  assets: OgAssets
   /** The in-browser render currently on screen; committed byte-for-byte. */
   render: OgRender | undefined
   isDraftValid: boolean
   onOpened?: (pullRequest: { number: number; url: string }) => void
 }
 
-export function PublishPanel({ params, render, isDraftValid, onOpened }: PublishPanelProps) {
+export function PublishPanel({ params, assets, render, isDraftValid, onOpened }: PublishPanelProps) {
   const [token, setToken] = useState<string | null>(null)
   const client = useMemo(() => (token ? createGitHubClient(token) : null), [token])
 
@@ -66,9 +71,14 @@ export function PublishPanel({ params, render, isDraftValid, onOpened }: Publish
   const [path, setPath] = useState<string>(TARGET_PATHS[0].path)
   const [review, setReview] = useState<Review | null>(null)
   const [isPreparing, setIsPreparing] = useState(false)
+  const [includeVideo, setIncludeVideo] = useState(true)
+  const [encodeProgress, setEncodeProgress] = useState<number | null>(null)
   const [step, setStep] = useState<PrStep | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<{ number: number; url: string } | null>(null)
+
+  const canEncode = useSWR("can-encode-mp4", canEncodeMp4, { revalidateOnFocus: false })
+  const videoSupported = canEncode.data !== false
 
   const reviewIsCurrent =
     review !== null &&
@@ -76,11 +86,15 @@ export function PublishPanel({ params, render, isDraftValid, onOpened }: Publish
     review.renderKey === render.key &&
     review.plan.filePath === path &&
     review.plan.repo === repo?.name &&
-    review.plan.owner === repo?.owner
+    review.plan.owner === repo?.owner &&
+    Boolean(review.video) === (includeVideo && videoSupported)
 
   useEffect(() => {
     if (!review) return
-    return () => URL.revokeObjectURL(review.imageUrl)
+    return () => {
+      URL.revokeObjectURL(review.imageUrl)
+      if (review.video) URL.revokeObjectURL(review.video.url)
+    }
   }, [review])
 
   const disconnect = () => {
@@ -99,17 +113,34 @@ export function PublishPanel({ params, render, isDraftValid, onOpened }: Publish
     try {
       const bytes = render.png
       const existingSha = await client.getFileSha(repo.owner, repo.name, path, repo.defaultBranch)
-      const plan = buildPrPlan({ repo, filePath: path, existingSha, params })
+
+      let video: Review["video"] = null
+      let videoSha: string | null = null
+      if (includeVideo && videoSupported) {
+        videoSha = await client.getFileSha(repo.owner, repo.name, videoPathFor(path), repo.defaultBranch)
+        setEncodeProgress(0)
+        const scene = await buildVideoScene(params, assets)
+        const mp4 = await encodeMp4(scene, { onProgress: setEncodeProgress })
+        video = {
+          base64: bytesToBase64(mp4),
+          url: URL.createObjectURL(new Blob([mp4 as BlobPart], { type: MP4_MIME })),
+          byteLength: mp4.byteLength,
+        }
+      }
+
+      const plan = buildPrPlan({ repo, filePath: path, existingSha, params, video: includeVideo && videoSupported ? { existingSha: videoSha } : null })
       setReview({
         plan,
         base64: bytesToBase64(bytes),
         imageUrl: URL.createObjectURL(new Blob([bytes as BlobPart], { type: "image/png" })),
         byteLength: bytes.byteLength,
         renderKey: render.key,
+        video,
       })
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not prepare the review.")
     } finally {
+      setEncodeProgress(null)
       setIsPreparing(false)
     }
   }
@@ -118,7 +149,7 @@ export function PublishPanel({ params, render, isDraftValid, onOpened }: Publish
     if (!client || !review || !reviewIsCurrent) return
     setError(null)
     try {
-      const created = await executePrPlan(client, review.plan, review.base64, setStep)
+      const created = await executePrPlan(client, review.plan, review.base64, setStep, review.video?.base64)
       setResult(created)
       onOpened?.(created)
     } catch (caught) {
@@ -171,9 +202,32 @@ export function PublishPanel({ params, render, isDraftValid, onOpened }: Publish
             {repo && !repo.canPush ? (
               <p className="text-sm text-destructive">This token cannot push to {repo.fullName}.</p>
             ) : null}
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={includeVideo && videoSupported}
+                disabled={!videoSupported || isPreparing}
+                onChange={(event) => setIncludeVideo(event.target.checked)}
+                className="mt-1 size-4 accent-brand"
+              />
+              <span className="flex flex-col">
+                <span>Also commit the animated MP4</span>
+                <span className="text-xs text-muted-foreground">
+                  {videoSupported
+                    ? `Adds ${videoPathFor(path)} and the og:video metadata. Encoded here, in your browser.`
+                    : "This browser cannot encode H.264 video, so only the image will be committed."}
+                </span>
+              </span>
+            </label>
             <div>
               <Button onClick={prepareReview} disabled={!canReview} variant={reviewIsCurrent ? "outline" : "default"}>
-                {isPreparing ? "Preparing review…" : reviewIsCurrent ? "Refresh review" : "Review changes"}
+                {isPreparing
+                  ? encodeProgress !== null
+                    ? `Encoding video ${Math.round(encodeProgress * 100)}%…`
+                    : "Preparing review…"
+                  : reviewIsCurrent
+                    ? "Refresh review"
+                    : "Review changes"}
               </Button>
             </div>
           </Stage>
@@ -181,7 +235,7 @@ export function PublishPanel({ params, render, isDraftValid, onOpened }: Publish
 
         {review ? (
           <Stage title="Review and open the pull request" done={Boolean(result)}>
-            <ReviewCard plan={review.plan} imageUrl={review.imageUrl} byteLength={review.byteLength} />
+            <ReviewCard plan={review.plan} imageUrl={review.imageUrl} byteLength={review.byteLength} video={review.video} />
             {!reviewIsCurrent ? (
               <p role="status" className="text-sm text-muted-foreground">
                 The card, repository, or path changed since this review. Refresh the review before opening a PR.

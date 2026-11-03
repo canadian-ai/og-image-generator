@@ -144,6 +144,7 @@ export function Generator() {
         >
           <PublishPanel
             params={lastValid}
+            assets={assets}
             render={preview.isCurrent ? preview.render : undefined}
             isDraftValid={validation.success && !preview.error}
             onOpened={setPullRequest}
@@ -153,6 +154,7 @@ export function Generator() {
       <div className="lg:sticky lg:top-6 lg:self-start">
         <OgPreview
           params={lastValid}
+          assets={assets}
           imageUrl={imageUrl}
           isRendering={preview.isRendering}
           isCurrent={preview.isCurrent}

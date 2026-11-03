@@ -144,6 +144,7 @@ export function Generator() {
         >
           <PublishPanel
             params={lastValid}
+            assets={assets}
             render={preview.isCurrent ? preview.render : undefined}
             isDraftValid={validation.success && !preview.error}
             onOpened={setPullRequest}

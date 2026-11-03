@@ -60,15 +60,40 @@ export function publicUrlFor(path: string): string | null {
   return null
 }
 
-export function metadataSnippet(path: string, params: OgParams): string | null {
-  const url = publicUrlFor(path)
-  if (!url) return null
-  return `export const metadata = {
-  openGraph: {
-    images: [{ url: "${url}", width: ${OG_WIDTH}, height: ${OG_HEIGHT}, alt: ${JSON.stringify(params.title)} }],
-  },
-  twitter: { card: "summary_large_image", images: ["${url}"] },
-}`
+const VIDEO_FILE_NAME = "og-video.mp4"
+
+/** The video sits beside a public image; for the App Router convention it goes in `public/`. */
+export function videoPathFor(imagePath: string): string {
+  if (!imagePath.startsWith("public/")) return `public/${VIDEO_FILE_NAME}`
+  const directory = imagePath.slice(0, imagePath.lastIndexOf("/"))
+  return `${directory}/${VIDEO_FILE_NAME}`
+}
+
+export function metadataSnippet(path: string, params: OgParams, videoPath?: string | null): string | null {
+  const imageUrl = publicUrlFor(path)
+  const videoUrl = videoPath ? publicUrlFor(videoPath) : null
+  if (!imageUrl && !videoUrl) return null
+
+  const openGraph: string[] = []
+  if (imageUrl) {
+    openGraph.push(
+      `    images: [{ url: "${imageUrl}", width: ${OG_WIDTH}, height: ${OG_HEIGHT}, alt: ${JSON.stringify(params.title)} }],`,
+    )
+  }
+  if (videoUrl) {
+    openGraph.push(`    videos: [{ url: "${videoUrl}", width: ${OG_WIDTH}, height: ${OG_HEIGHT}, type: "video/mp4" }],`)
+  }
+
+  const lines = ["export const metadata = {", "  openGraph: {", ...openGraph, "  },"]
+  if (imageUrl) lines.push(`  twitter: { card: "summary_large_image", images: ["${imageUrl}"] },`)
+  lines.push("}")
+  return lines.join("\n")
+}
+
+export interface PrVideoPlan {
+  filePath: string
+  action: "create" | "update"
+  existingSha: string | null
 }
 
 export interface PrPlan {
@@ -79,6 +104,7 @@ export interface PrPlan {
   filePath: string
   action: "create" | "update"
   existingSha: string | null
+  video: PrVideoPlan | null
   commitMessage: string
   prTitle: string
   prBody: string
@@ -89,6 +115,8 @@ export function buildPrPlan(input: {
   filePath: string
   existingSha: string | null
   params: OgParams
+  /** Include the animated MP4 alongside the image; `existingSha` is the current file's blob sha at the video path. */
+  video?: { existingSha: string | null } | null
   now?: Date
 }): PrPlan {
   const { repo, filePath, existingSha, params } = input
@@ -97,13 +125,26 @@ export function buildPrPlan(input: {
   const action = existingSha ? "update" : "create"
   const verb = action === "create" ? "Add" : "Update"
   const preset = getPreset(params.preset)
-  const snippet = metadataSnippet(filePath, params)
+  const video: PrVideoPlan | null = input.video
+    ? {
+        filePath: videoPathFor(filePath),
+        action: input.video.existingSha ? "update" : "create",
+        existingSha: input.video.existingSha,
+      }
+    : null
+  const snippet = metadataSnippet(filePath, params, video?.filePath)
+  const subject = video ? "Open Graph image and video" : "Open Graph image"
+  const isAppConvention = filePath.endsWith("opengraph-image.png") && filePath.startsWith("app/")
 
   const lines = [
-    `## ${verb} Open Graph image`,
+    `## ${verb} ${subject}`,
     "",
     `${action === "create" ? "Adds" : "Replaces"} \`${filePath}\` with a ${OG_WIDTH}x${OG_HEIGHT} PNG rendered by Takumi using the **${preset.name}** preset.`,
     "",
+    video
+      ? `${video.action === "create" ? "Adds" : "Replaces"} \`${video.filePath}\`, a 4 second ${OG_WIDTH}x${OG_HEIGHT} H.264 clip of the same card. It is built from the card's own layers with fixed easing, so it renders identically every time and loops cleanly.`
+      : null,
+    video ? "" : null,
     "| Field | Value |",
     "| --- | --- |",
     `| Title | ${escapeTableCell(params.title)} |`,
@@ -118,13 +159,21 @@ export function buildPrPlan(input: {
     "",
   ]
 
-  if (filePath.endsWith("opengraph-image.png") && filePath.startsWith("app/")) {
+  if (isAppConvention) {
     lines.push("Next.js App Router picks this file up automatically and emits the `og:image` tags.", "")
-  } else if (snippet) {
-    lines.push("Wire it into your metadata:", "", "```ts", snippet, "```", "")
+  }
+  if (snippet) {
+    const intro = isAppConvention ? "Add the video to your metadata:" : "Wire it into your metadata:"
+    lines.push(intro, "", "```ts", snippet, "```", "")
+  }
+  if (video) {
+    lines.push(
+      "Set `metadataBase` so these paths resolve to absolute URLs. Most link-preview crawlers still read `og:image` only, so the PNG stays the fallback; the video is for the players and apps that do honour `og:video`.",
+      "",
+    )
   }
 
-  lines.push("---", "_Opened from the Canadian AI OG Image Generator. Review the image before merging._")
+  lines.push("---", `_Opened from the Canadian AI OG Image Generator. Review the ${video ? "image and video" : "image"} before merging._`)
 
   return {
     owner: repo.owner,
@@ -134,8 +183,9 @@ export function buildPrPlan(input: {
     filePath,
     action,
     existingSha,
-    commitMessage: `${verb} Open Graph image (${preset.name})`,
-    prTitle: `${verb} Open Graph image: ${params.title}`.slice(0, 120),
+    video,
+    commitMessage: `${verb} ${subject} (${preset.name})`,
+    prTitle: `${verb} ${subject}: ${params.title}`.slice(0, 120),
     prBody: lines.filter((line): line is string => line !== null).join("\n"),
   }
 }
@@ -151,7 +201,10 @@ export async function executePrPlan(
   plan: PrPlan,
   contentBase64: string,
   onStep: (step: PrStep) => void = () => {},
+  videoBase64?: string,
 ): Promise<{ number: number; url: string }> {
+  if (plan.video && !videoBase64) throw new Error("The video is part of this plan but its bytes are missing.")
+
   onStep("branch")
   const baseSha = await client.getBranchSha(plan.owner, plan.repo, plan.baseBranch)
   await client.createBranch(plan.owner, plan.repo, plan.headBranch, baseSha)
@@ -166,6 +219,17 @@ export async function executePrPlan(
     contentBase64,
     sha: plan.existingSha,
   })
+  if (plan.video && videoBase64) {
+    await client.putFile({
+      owner: plan.owner,
+      repo: plan.repo,
+      path: plan.video.filePath,
+      branch: plan.headBranch,
+      message: `${plan.video.action === "create" ? "Add" : "Update"} Open Graph video`,
+      contentBase64: videoBase64,
+      sha: plan.video.existingSha,
+    })
+  }
 
   onStep("pull-request")
   return client.createPullRequest({

@@ -5,27 +5,64 @@ import { Badge } from "@/components/ui/badge"
 import type { PrPlan } from "@/lib/github/plan"
 import { OG_HEIGHT, OG_WIDTH } from "@/lib/og/schema"
 
-export function ReviewCard({ plan, imageUrl, byteLength }: { plan: PrPlan; imageUrl: string; byteLength: number }) {
+export interface ReviewVideo {
+  url: string
+  byteLength: number
+}
+
+interface ReviewCardProps {
+  plan: PrPlan
+  imageUrl: string
+  byteLength: number
+  video: ReviewVideo | null
+}
+
+export function ReviewCard({ plan, imageUrl, byteLength, video }: ReviewCardProps) {
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-      <figure className="flex flex-col gap-2">
-        <img
-          src={imageUrl}
-          alt="The exact PNG that will be committed"
-          width={OG_WIDTH}
-          height={OG_HEIGHT}
-          className="aspect-[1200/630] w-full rounded-md border bg-muted"
-        />
-        <figcaption className="flex flex-wrap items-center gap-2 font-mono text-xs text-muted-foreground">
-          <span>{plan.filePath}</span>
-          <span aria-hidden="true">·</span>
-          <span>
-            {OG_WIDTH}×{OG_HEIGHT}
-          </span>
-          <span aria-hidden="true">·</span>
-          <span>{(byteLength / 1024).toFixed(1)} KB</span>
-        </figcaption>
-      </figure>
+      <div className="flex min-w-0 flex-col gap-4">
+        <figure className="flex flex-col gap-2">
+          <img
+            src={imageUrl}
+            alt="The exact PNG that will be committed"
+            width={OG_WIDTH}
+            height={OG_HEIGHT}
+            className="aspect-[1200/630] w-full rounded-md border bg-muted"
+          />
+          <figcaption className="flex flex-wrap items-center gap-2 font-mono text-xs text-muted-foreground">
+            <span>{plan.filePath}</span>
+            <span aria-hidden="true">·</span>
+            <span>
+              {OG_WIDTH}×{OG_HEIGHT}
+            </span>
+            <span aria-hidden="true">·</span>
+            <span>{(byteLength / 1024).toFixed(1)} KB</span>
+          </figcaption>
+        </figure>
+        {video && plan.video ? (
+          <figure className="flex flex-col gap-2">
+            <video
+              src={video.url}
+              controls
+              loop
+              muted
+              playsInline
+              preload="metadata"
+              aria-label="The exact MP4 that will be committed"
+              width={OG_WIDTH}
+              height={OG_HEIGHT}
+              className="aspect-[1200/630] w-full rounded-md border bg-muted"
+            />
+            <figcaption className="flex flex-wrap items-center gap-2 font-mono text-xs text-muted-foreground">
+              <span>{plan.video.filePath}</span>
+              <span aria-hidden="true">·</span>
+              <span>4s · 60fps</span>
+              <span aria-hidden="true">·</span>
+              <span>{(video.byteLength / 1024).toFixed(1)} KB</span>
+            </figcaption>
+          </figure>
+        ) : null}
+      </div>
 
       <div className="flex min-w-0 flex-col gap-4">
         <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm">
